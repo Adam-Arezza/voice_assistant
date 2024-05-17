@@ -1,3 +1,4 @@
 env/
 temp/
 src/__pycache__/
+config.json
