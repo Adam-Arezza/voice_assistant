@@ -27,6 +27,7 @@ class Transcriber:
         options = whisper.DecodingOptions()
         result = whisper.decode(self.model, mel, options)
         transcript = "".join(result.text)
+        hallucination_filter = ["Thank you.", "you.", "you"]
         return transcript
 
 
@@ -37,6 +38,7 @@ class Transcriber:
         if transcript.lower() == "hey robot.":
             return True
         else:
+            print(transcript.lower())
             return False
 
 

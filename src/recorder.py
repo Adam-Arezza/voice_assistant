@@ -22,6 +22,7 @@ class Recorder:
         self.silence_frames = 0
         self.stream_stopped = False
         self.audio_frames = []
+        print(self.mic.get_default_input_device_info())
 
     def record_chunk(self, file_path, chunk_len):
         frames = []
@@ -47,8 +48,9 @@ class Recorder:
         avg_amp = np.average(abs(data))
         #print(len(data))
         #print(data.shape)
-        print(avg_amp)
-        if avg_amp < 30:
+        #print(avg_amp)
+        #print('checking this')
+        if avg_amp < 300:
             silence_detected = True
         return silence_detected
 
