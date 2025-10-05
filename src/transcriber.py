@@ -4,11 +4,12 @@ import numpy as np
 
 
 class Transcriber:
-    def __init__(self, model="base", device="cuda"):
+    def __init__(self, model="tiny", device="cpu"):
         self.model = whisper.load_model(model, device=device)
 
 
     def transcribe_chunk(self, chunk_file):
+        #print(f"attempting to transcribe from {chunk_file}")
         audio = whisper.load_audio(chunk_file)
         audio = whisper.pad_or_trim(audio)
         mel = whisper.log_mel_spectrogram(audio).to(self.model.device)
@@ -20,6 +21,7 @@ class Transcriber:
 
 
     def transcribe_audio(self, audio):
+        print("transcribing...")
         audio = np.frombuffer(b''.join(audio), np.int16).flatten().astype(np.float32) / 32768.0
         audio = whisper.pad_or_trim(audio)
         mel = whisper.log_mel_spectrogram(audio).to(self.model.device)
@@ -29,16 +31,5 @@ class Transcriber:
         transcript = "".join(result.text)
         hallucination_filter = ["Thank you.", "you.", "you"]
         return transcript
-
-
-    def check_wake_word(self, transcript):
-        #transcript = self.transcribe_chunk(wake_wav).lower()
-        #transcript = self.transcribe_audio(wake_wav).lower()
-        #os.remove(wake_wav)
-        if transcript.lower() == "hey robot.":
-            return True
-        else:
-            print(transcript.lower())
-            return False
 
 

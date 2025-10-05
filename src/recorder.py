@@ -17,59 +17,39 @@ class Recorder:
                                     rate=rate,
                                     input=input,
                                     frames_per_buffer=frames_per_buffer,
-                                    stream_callback=self.stream_cb
+                                    #stream_callback=self.stream_cb
                                     )
         self.silence_frames = 0
         self.stream_stopped = False
         self.audio_frames = []
         print(self.mic.get_default_input_device_info())
 
-    def record_chunk(self, file_path, chunk_len):
+    def record_chunk(self, chunk_len):
         frames = []
         for _ in range(0, int(self.rate / self.frames_per_buffer * chunk_len)):
             data = self.stream.read(self.frames_per_buffer)
             frames.append(data)
         chunk_data = b''.join(frames)
+        if len(self.audio_frames) > 0:
+            self.audio_frames += chunk_data
+        else:
+            self.audio_frames = chunk_data
+
+    def save_audio(self, file_path):
         w = wave.open(file_path, 'wb')
         w.setnchannels(self.channels)
         w.setsampwidth(self.mic.get_sample_size(self.format))
         w.setframerate(self.rate)
-        w.writeframes(chunk_data)
+        w.writeframes(self.audio_frames)
         w.close()
         
 
-    def detect_silence(self, audio_data):
-        np.set_printoptions(threshold=sys.maxsize)
-        silence_detected = False
-        #read the data
-        #compare the data to some threshold for silence
-        #if the data is silence for x consecutive frames, stop the recording
-        data = np.fromstring(audio_data, dtype=np.int16)
-        avg_amp = np.average(abs(data))
-        #print(len(data))
-        #print(data.shape)
-        #print(avg_amp)
-        #print('checking this')
-        if avg_amp < 300:
-            silence_detected = True
-        return silence_detected
-
-
-    def stream_cb(self, in_data, frame_count, time_info, status_flags):
-        flag = pyaudio.paContinue
-        #print(frame_count)
-        if self.detect_silence(in_data):
-            #print("silence was detected")
-            self.silence_frames += 1
-            if self.silence_frames >= 20:
-                self.stream_stopped = True
-                flag = pyaudio.paComplete
-                self.stream.close()
-                self.silence_frames = 0
-        else:
-            self.silence_frames = 0
-        self.audio_frames.append(in_data)
-        return (in_data, flag)
+    def close_stream(self):
+        self.clear_audio_frames()
+        self.stream.stop_stream()
+        self.stream.close()
+        self.mic.terminate()
+        self.stream_stopped = True
 
 
     def restart_stream(self):
@@ -78,8 +58,9 @@ class Recorder:
                                     rate=self.rate,
                                     input=self.input,
                                     frames_per_buffer=self.frames_per_buffer,
-                                    stream_callback=self.stream_cb
+                                    #stream_callback=self.stream_cb
                                     )
+        self.stream_stopped = False
 
     def clear_audio_frames(self):
         self.audio_frames = []

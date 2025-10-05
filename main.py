@@ -3,6 +3,7 @@ import numpy as np
 import subprocess as sp
 import json
 import time
+import keyboard
 from src.speaker import Speaker
 from src.recorder import Recorder
 from src.transcriber import Transcriber
@@ -16,52 +17,31 @@ def main():
     speaker = Speaker()
     recorder = Recorder()
     transcriber = Transcriber()
-    assistant = Assistant(cfg)
-    wait_wake = True
-    
+    assistant = Assistant(cfg, show_history=True)
+    temp_audio_file = cfg["file"]
 
     try:
         while True:
-            if recorder.stream_stopped:
-                recorder.stream_stopped = False
-                transcript = transcriber.transcribe_audio(recorder.audio_frames)
-                hallucination_filter = ["thank you.", "thank you", "you.", "you"]
-                if transcript.lower() in hallucination_filter:
+            if keyboard.is_pressed("space") and not recorder.stream_stopped:
+                print("Listening...")
+                recorder.record_chunk(5)
+            else:
+                if len(recorder.audio_frames) > 0:
+                    recorder.save_audio(temp_audio_file)
                     recorder.clear_audio_frames()
-                    recorder.restart_stream()
-                    continue
-                #print(transcript)
-
-                #waiting for wake word
-                if wait_wake:
-                    wake = transcriber.check_wake_word(transcript)
-                    if wake:
-                        speaker.speak("What can I help you with?")
-                        recorder.clear_audio_frames()
-                        recorder.restart_stream()
-                        wait_wake = False
-                    else:
-                        recorder.clear_audio_frames()
-                        recorder.restart_stream()
-
-                else:
-                    command, content = assistant.executor.parse_command(transcript)
-                    if command:
-                        if command == "stop robot":
-                            wait_wake = True
-                            speaker.speak("okay, let me know when you need more help")
-                            recorder.clear_audio_frames()
-                            recorder.restart_stream()
-                            break
-                        else:
-                            speaker.speak(f"Executing command {command}")
-                            assistant.executor.commands[command](content)
-                    else:
-                        response = assistant.get_response(transcript)
+                    transcript = transcriber.transcribe_chunk(temp_audio_file)
+                    print(transcript)
+                    response = assistant.get_response(transcript)
+                    try:
                         speaker.speak(response)
-                        recorder.clear_audio_frames()
-                        recorder.restart_stream()
-            time.sleep(0.01)
+                    except Exception as e:
+                        print("Error with speech to text")
+                        print(e)
+                    print(response)
+                    os.remove(temp_audio_file)
+                else:
+                    continue
+            time.sleep(0.1)
 
            
     except Exception as e:
